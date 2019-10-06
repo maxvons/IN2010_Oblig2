@@ -8,7 +8,9 @@ class Project {
     private String name;
     private int numTasks;
     private LinkedList<Task> tasks;
-    private ArrayList<Integer> recStack = new ArrayList<>();
+    private LinkedList<Task> whiteSet = new LinkedList<>();
+    private LinkedList<Task> graySet = new LinkedList<>();
+    private LinkedList<Task> blackSet = new LinkedList<>();
 
     public Project(String name, int numTasks, LinkedList<Task> tasks) {
         this.name = name;
@@ -83,6 +85,10 @@ class Project {
         return tasks.getFirst();
     }
 
+    public LinkedList<Task> getTasks() {
+        return tasks;
+    }
+
     public void resetVisited() {
         for (Task t : tasks) {
             t.resetVisit();
@@ -93,6 +99,12 @@ class Project {
         for (Task t : tasks) {
             t.setDFSNotActive();
         }
+    }
+
+    public void resetSets() {
+        whiteSet = new LinkedList<>();
+        graySet = new LinkedList<>();
+        blackSet = new LinkedList<>();
     }
 
     public int getActiveTasks() {
@@ -125,6 +137,27 @@ class Project {
         return false;
     }
 
+    public void fillWhiteSet() {
+        for (Task t : tasks) {
+            whiteSet.add(t);
+        }
+    }
+
+    // Check if two tasks are codependent
+    public boolean checkCodependency(LinkedList<Task> taskSet) {
+        for (Task t : taskSet) {
+            for (Task t2 : t.getOutEdges()) {
+                if (t2.getOutEdges().contains(t)) {
+                    System.out.println("Codependency between tasks detected.");
+                    System.out.println("Task with ID: " + t2.getId());
+                    System.out.println("Task with ID: " + t.getId());
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // Find and print cycle in graph if such a cycle exists
     public boolean findCycle(Task s) {
         if (!containsCycle(getFirstTask())) {
@@ -132,19 +165,28 @@ class Project {
             return false;
         }
 
-        s.setDFSActive();
+        graySet.add(s);
 
         for (Task t : s.getOutEdges()) {
-            if (t.isActive()) {
-                // Backedge exists
+            if (graySet.contains(t)) {
+                // Cycle found
+                System.out.println("Cycle found.");
+                if (checkCodependency(graySet)) {
+                    // Let the checkCodependency method print info
+                }   else {
+                    for (Task ta : graySet) {
+                        System.out.println(ta.getId());
+                    }
+                }
                 return true;
-            }   else if (!t.isVisited() && findCycle(t)) {
+            }   else if (whiteSet.contains(t) && findCycle(t)) {
                 return true;
             }
         }
  
-        s.setDFSNotActive();
-        s.visit();
+        graySet.remove(s);
+        whiteSet.remove(s);
+        blackSet.add(s);
         return false;
     }
 
