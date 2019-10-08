@@ -1,5 +1,8 @@
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.ArrayList;
+import java.util.Stack;
+import java.util.Queue;
 import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -119,6 +122,30 @@ class Project {
         return active;
     }
 
+    public int getVisitedTasks() {
+        int visited = 0;
+
+        for (Task t : tasks) {
+            if (t.isVisited()) {
+                visited++;
+            }
+        }
+
+        return visited;
+    }
+
+    // Get the predecessors of a task from id/integer depedencyEdges
+    public void addPredecessors () {
+        LinkedList<Task> predecessors = new LinkedList<>();
+
+        for (Task t : tasks) {
+            for (int i : t.getDependencyEdges()) {
+                Task p = getTaskById(i);
+                t.addInEdge(p);
+            }
+        }
+    }
+
     // Detect cycle in graph
     public boolean containsCycle(Task s) {
         s.setDFSActive();
@@ -191,60 +218,150 @@ class Project {
     }
 
     // Use cycle detection method to determine if project is realizable
-    public void isRealizable() {
+    public boolean isRealizable() {
         if (containsCycle(getFirstTask())) {
             System.out.println("Project is not realizable.");
+            resetVisited();
+            resetActive();
+            return false;
         }   else {
             System.out.println("Project is realizable.");
+            resetVisited();
+            resetActive();
+            return true;
         }
     }
 
-    // TODO...
-    public LinkedList<Task> topologicalSort() {
-        LinkedList<Task> stack = new LinkedList<>();
+    // Return a sorted queue if no cycle present
+    public Queue<Task> topologicalSort() {
+        Stack<Task> stack = new Stack<>();
+        Queue<Task> queue = new LinkedList<>();
         int inCounter = 0;
-        for (Task t : tasks) {
-            inCounter = t.getDependencyEdges().size();
-            System.out.println(inCounter);
-            if (inCounter == 0) {
-                stack.push(t);
-                System.out.println("Pushed " + t.getId() + " onto the stack");
-            }
-        }
 
-        int i = 0;
-
-        while (!(stack.isEmpty())) {
-            Task v = stack.pop();
-            v.setId(i);
-            System.out.println("ID: " + v.getId());
-            i++;
-
-            for (Task d : v.getOutEdges()) {
-                System.out.println("Outedge id: " + d.getId());
-                inCounter = d.getDependencyEdges().size();
-                inCounter = inCounter - 1;
+        if (isRealizable()) {
+            for (Task t : tasks) {
+                inCounter = t.getDependencyEdges().size();
                 if (inCounter == 0) {
-                    stack.push(d);
-                    System.out.println("Pushed " + d.getId() + " onto the stack");
+                    stack.push(t);
                 }
             }
+
+            int i = 1;
+
+            while (!(stack.isEmpty())) {
+                Task v = stack.pop();
+                int temp = v.getId();
+                v.setId(i);
+                queue.add(v);
+                System.out.println("Added task with original ID: " + temp);
+                i++;
+
+                for (Task d : v.getOutEdges()) {
+                    d.reduceInCounter();
+                    if (d.getInCounter() == 0) {
+                        d.setInCounter(d.getDependencyEdges().size());
+                        stack.push(d);
+                    }
+                }
+            }
+
+            System.out.println("Sorted project.");
+            return queue;
+        }   else {
+            System.out.println("Project contains cycle. Could not sort.");
+            return null;
         }
-        for (Task t : stack) {
-            System.out.println(t.getId());
-        }
-        System.out.println(i);
-        if (i > tasks.size()) {
-            return stack;
-        }
-        System.out.println("The graph contains a cycle.");;
-        return null;
     }
-    
+
+    // Add the earliest start time to all tasks in a sorted project
+    public void addEarliestStart(Queue<Task> sortedProject) {
+        int time = 0;
+        int temp = 0;
+        Task slowest = null;
+        int earliestStart = 0;
+        LinkedList<Task> predecessors = new LinkedList<>();
+
+        for (Task t : sortedProject) {
+            if (t.getInCounter() == 0) {
+                t.setEarliestStart(0);
+            }   else {
+                time = 0;
+                for (Task p : t.getInEdges()) {
+                    temp = p.getTime();
+                    if (temp > time) {
+                        time = temp; 
+                        slowest = p;
+                    }
+                }
+                t.setEarliestStart(time + slowest.getEarliestStart());
+            }
+        }
+    }
+
+    // Get the earliestStart value of the task with the highest value
+    public int getLastStart() {
+        int lastStart = 0;
+        int temp = 0;
+
+        for (Task t : tasks) {
+            temp = t.getEarliestStart();
+            if (temp > lastStart) {
+                lastStart = temp;
+            }
+        }
+
+        return lastStart;
+    }
+
+    // Prints the shortest possible project execution time
+    public void printTimeSchedule(Queue<Task> sortedProject, int lastStart) {
+        int totTime = 0;
+        int start = 0;
+        int currentStaff = 0;
+        Task task = null;
+        LinkedList<Task> timeTasks = null;
+
+        while (start < lastStart) {
+                if (sortedProject.peek() != null) {
+                    task = sortedProject.remove();
+                }
+
+                timeTasks = new LinkedList<>();
+                currentStaff = 0;
+                start = task.getEarliestStart();
+
+                timeTasks.add(task);
+                
+                for (Task t : sortedProject) {
+                    if (t.getEarliestStart() == start) {
+                        timeTasks.add(t);
+                    }
+                }
+
+                for (Task t : timeTasks) {
+                    sortedProject.remove(t);
+                }
+
+                System.out.print("Time: " + totTime);
+                for (Task t : timeTasks) {
+                    currentStaff += t.getStaff();
+                    System.out.println("       Starting: Task " + t.getId() + "(" + t.getName() + ")");
+                    totTime += t.getTime();
+                }
+                System.out.println("       Current staff: " + currentStaff);
+                System.out.println();
+            }
+    }
 
     // Print method for testing purposes
     public void printTasks() {
         for (Task t : tasks) {
+            System.out.println(t);
+        }
+    }
+
+    public void printSortedTasks(Queue<Task> taskQueue) {
+        for (Task t : taskQueue) {
             System.out.println(t);
         }
     }
@@ -260,7 +377,7 @@ class Project {
         }
     }
 
-    // Adding edge to make cycle for specific graph for testing purposes.
+    // Method for adding outedge for testing purposes
     public void addEdge(int id1, int id2) {
         Task t1 = getTaskById(id1);
         Task t2 = getTaskById(id2);
@@ -268,10 +385,21 @@ class Project {
         t1.addOutEdge(t2);
     }
 
+    // Method for adding dependency edge for testing purposes
     public void addDependencyEdge(int id1, int id2) {
         Task t1 = getTaskById(id1);
         Task t2 = getTaskById(id2);
 
         t1.getDependencyEdges().add(id2);
+    }
+
+    // For fuck sake m8
+    public void autism() {
+        String yeet = "YEE";
+
+        while (true) {
+            yeet += "E";
+            System.out.println(yeet);
+        }
     }
 }
