@@ -40,10 +40,6 @@ class Project {
 
         int numTasks = scan.nextInt();
 
-        // Skip line.
-        String line = scan.nextLine();
-        line = scan.nextLine();
-
         // Creating tasks and adding to list without adding dependencies
         while (scan.hasNextLine()) {
             taskId = scan.nextInt();
@@ -70,6 +66,16 @@ class Project {
         for (Task t : tasks) {
             for (int e : t.getDependencyEdges()) {
                 getTaskById(e).addOutEdge(t);
+            }
+        }
+    }
+
+    // Add inEdges to all the tasks in the project
+    public void addInEdges () {
+        for (Task t : tasks) {
+            for (int i : t.getDependencyEdges()) {
+                Task p = getTaskById(i);
+                t.addInEdge(p);
             }
         }
     }
@@ -104,6 +110,7 @@ class Project {
         }
     }
 
+    // Reset the sets used in findCycle method
     public void resetSets() {
         whiteSet = new LinkedList<>();
         graySet = new LinkedList<>();
@@ -132,18 +139,6 @@ class Project {
         }
 
         return visited;
-    }
-
-    // Get the predecessors of a task from id/integer depedencyEdges
-    public void addPredecessors () {
-        LinkedList<Task> predecessors = new LinkedList<>();
-
-        for (Task t : tasks) {
-            for (int i : t.getDependencyEdges()) {
-                Task p = getTaskById(i);
-                t.addInEdge(p);
-            }
-        }
     }
 
     // Detect cycle in graph
@@ -278,8 +273,6 @@ class Project {
         int time = 0;
         int temp = 0;
         Task slowest = null;
-        int earliestStart = 0;
-        LinkedList<Task> predecessors = new LinkedList<>();
 
         for (Task t : sortedProject) {
             if (t.getInCounter() == 0) {
@@ -294,6 +287,29 @@ class Project {
                     }
                 }
                 t.setEarliestStart(time + slowest.getEarliestStart());
+            }
+        }
+    }
+
+    // Add the earliest finishing time for each task in sorted project
+    public void addEarliestFinish(Queue<Task> sortedProject) {
+        int time = 0;
+        int temp = 0;
+        Task slowest = null;
+
+        for (Task t : sortedProject) {
+            if (t.getInCounter() == 0) {
+                t.setEarliestFinish(t.getTime());
+            }   else {
+                time = 0;
+                for (Task p : t.getInEdges()) {
+                    temp = p.getTime();
+                    if (temp > time) {
+                        time = temp; 
+                        slowest = p;
+                    }
+                }
+                t.setEarliestFinish(time + slowest.getEarliestStart() + t.getTime());
             }
         }
     }
@@ -313,15 +329,82 @@ class Project {
         return lastStart;
     }
 
+    // Get the earliestFinish value of the task with the highest value
+    public int getLastFinish() {
+        int lastFinish = 0;
+        int temp = 0;
+
+        for (Task t : tasks) {
+            temp = t.getEarliestFinish();
+            if (temp > lastFinish) {
+                lastFinish = temp;
+            }
+        }
+
+        return lastFinish;
+    }
+
+    // Get the fastest task in a given list {
+    public Task getFastestSameStart(LinkedList<Task> taskList) {
+        int temp = 0;
+        Task fastest = null;
+
+        if (taskList.size() == 1) {
+            return taskList.get(0);
+        }
+
+        int time = taskList.get(0).getTime();
+        for (Task t : taskList) {
+            temp = t.getTime();
+            if (temp <= time) {
+                time = temp;
+                fastest = t;
+            }
+        }
+        
+        return fastest;
+    }
+
+    /* Helper method for figuring out if a list contains tasks with different 
+    start times
+    */
+    public boolean differentStarts(LinkedList<Task> taskList) {
+        boolean different = false;
+        int start = taskList.get(0).getEarliestStart();
+
+        if (taskList.size() == 1) {
+            return false;
+        }
+        for (Task t : taskList) {
+            if (t.getEarliestStart() != start) {
+                different = true;
+            }
+        }
+
+        return different; 
+    }
+
     // Prints the shortest possible project execution time
     public void printTimeSchedule(Queue<Task> sortedProject, int lastStart) {
-        int totTime = 0;
+        int time = 0;
         int start = 0;
         int currentStaff = 0;
         Task task = null;
+        boolean timePrint = false;
+        boolean done = false;
         LinkedList<Task> timeTasks = null;
+        LinkedList<Task> startedTasks = new LinkedList<>();
+        LinkedList<Task> finishedTasks = new LinkedList<>();
+        LinkedList<Task> tasks = new LinkedList<>();
 
-        while (start < lastStart) {
+        // Fill temp list
+        int i = 0;
+        for (Task t : sortedProject) {
+            tasks.add(i, t);
+            i++;
+        }
+
+        while (!done) {
                 if (sortedProject.peek() != null) {
                     task = sortedProject.remove();
                 }
@@ -331,10 +414,14 @@ class Project {
                 start = task.getEarliestStart();
 
                 timeTasks.add(task);
-                
+                if (!(startedTasks.contains(task))) {
+                    startedTasks.add(task);
+                }
+
                 for (Task t : sortedProject) {
                     if (t.getEarliestStart() == start) {
                         timeTasks.add(t);
+                        startedTasks.add(t);
                     }
                 }
 
@@ -342,16 +429,68 @@ class Project {
                     sortedProject.remove(t);
                 }
 
-                System.out.print("Time: " + totTime);
-                for (Task t : timeTasks) {
-                    currentStaff += t.getStaff();
-                    System.out.println("       Starting: Task " + t.getId() + "(" + t.getName() + ")");
-                    totTime += t.getTime();
+                // Print info
+                timePrint = false;
+                for (Task t : tasks) {
+                    if (startedTasks.contains(t) || finishedTasks.contains(t)) {
+                        if ((startedTasks.contains(t)) && (!finishedTasks.contains(t))) {
+                            if (!timePrint) {
+                                System.out.print("Time: " + t.getEarliestStart());
+                                timePrint = true;
+                            }
+                            if (t.getEarliestStart() <= time && !t.isPrintedStart()) {
+                                System.out.println("       Starting task: " + t.getId());
+                                t.setPrintedStart();
+                                if (!finishedTasks.contains(t)) {
+                                    finishedTasks.add(t);
+                                }
+                            }
+                            if (t.isPrintedStart()) {
+                                startedTasks.remove(t);
+                            }
+                        }   else if (finishedTasks.contains(t) && (!startedTasks.contains(t)) && (!(t == tasks.getLast()))) {
+                            if (!timePrint && !differentStarts(finishedTasks)) { 
+                                Task fastest = getFastestSameStart(finishedTasks);
+                                time = fastest.getEarliestFinish();
+                                System.out.print("Time: " + time);
+                                timePrint = true;
+                            }   else if (!timePrint && differentStarts(finishedTasks)) {
+                                time = t.getEarliestFinish();
+                                System.out.print("Time: " + time);
+                                timePrint = true;
+                            }
+                            if (t.getEarliestFinish() <= time) {
+                                System.out.println("      Finishing task: " + t.getId());
+                                t.setPrintedFinish();
+                            }
+                            if (t.isPrintedFinish()) {
+                                finishedTasks.remove(t);
+                            }
+                        }   else if (finishedTasks.contains(t) && (t == tasks.getLast())) {
+                            time = t.getEarliestFinish();
+                            System.out.print("Time: " + time);
+                            timePrint = true;
+                            finishedTasks.remove(t);
+                            System.out.println("      Finishing task: " + t.getId());
+                            t.setPrintedFinish();
+                            done = true;
+                        }
+                    }
                 }
-                System.out.println("       Current staff: " + currentStaff);
+    
+                for (Task t : tasks) {
+                    if (t.isPrintedStart() && !t.isPrintedFinish()) {
+                        currentStaff += t.getStaff();
+                    }
+                    
+                }
+
+                System.out.println("              Current staff: " + currentStaff);
                 System.out.println();
             }
+        System.out.println("**** Shortest possible project execution is " + (tasks.getLast().getEarliestFinish() + tasks.getLast().getTime()) + " ****");
     }
+
 
     // Print method for testing purposes
     public void printTasks() {
@@ -360,13 +499,14 @@ class Project {
         }
     }
 
+    // Print method for testing purposes
     public void printSortedTasks(Queue<Task> taskQueue) {
         for (Task t : taskQueue) {
             System.out.println(t);
         }
     }
 
-    // Print method for testing purposes.
+    // Print method for testing purposes
     public void printOutEdges() {
         for (Task t : tasks) {
             System.out.print(t.getId() + " has outedges: ");
