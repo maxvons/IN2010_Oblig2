@@ -6,7 +6,11 @@ class Task {
     private int staff;
     private String name;
     private int earliestStart;
+    private int earliestFinish;
     private int latestStart;
+    private int finished;
+    private boolean printedFinish = false;
+    private boolean printedStart = false;
     private LinkedList<Task> outEdges = new LinkedList<>();
     private LinkedList<Task> inEdges = new LinkedList<>();
     private int inCounter;
@@ -51,6 +55,10 @@ class Task {
         return latestStart;
     }
 
+    public int getEarliestFinish() {
+        return earliestFinish;
+    }
+
     public LinkedList<Task> getOutEdges() {
         return outEdges;
     }
@@ -73,6 +81,26 @@ class Task {
 
     public void setEarliestStart(int time) {
         earliestStart = time;
+    }
+
+    public void setEarliestFinish(int time) {
+        earliestFinish = time;
+    }
+
+    public void setPrintedFinish() {
+        printedFinish = true;
+    }
+
+    public boolean isPrintedFinish() {
+        return printedFinish;
+    }
+
+    public void setPrintedStart() {
+        printedStart = true;
+    }
+
+    public boolean isPrintedStart() {
+        return printedStart;
     }
 
     public void setDFSActive() {
