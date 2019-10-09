@@ -6,7 +6,7 @@ class TestProject {
     public static void main(String[] args) {
         Project p = Project.buildProject("buildhouse1.txt");
         p.addOutEdges();
-        p.addPredecessors();
+        p.addInEdges();
         p.printTasks();
         p.printOutEdges();
         // p.topologicalSort();
@@ -15,6 +15,7 @@ class TestProject {
         p.isRealizable();
         Queue<Task> test = p.topologicalSort();
         p.addEarliestStart(test);
+        p.addEarliestFinish(test);
         p.printSortedTasks(test);
         
         p.printTimeSchedule(test, p.getLastStart());
