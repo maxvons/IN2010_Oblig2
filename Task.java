@@ -8,9 +8,13 @@ class Task {
     private int earliestStart;
     private int earliestFinish;
     private int latestStart;
-    private int finished;
+    private int latestFinish;
+    private int slack;
     private boolean printedFinish = false;
     private boolean printedStart = false;
+    private boolean critical = false;
+    private boolean addedToList = false;
+    private boolean lastSorted = false;
     private LinkedList<Task> outEdges = new LinkedList<>();
     private LinkedList<Task> inEdges = new LinkedList<>();
     private int inCounter;
@@ -59,6 +63,10 @@ class Task {
         return earliestFinish;
     }
 
+    public int getLatestFinish() {
+        return latestFinish;
+    }
+
     public LinkedList<Task> getOutEdges() {
         return outEdges;
     }
@@ -69,6 +77,30 @@ class Task {
 
     public LinkedList<Integer> getDependencyEdges() {
         return dependencyEdges;
+    }
+
+    public int getSlack() {
+        return slack;
+    }
+
+    public void setSlack(int time) {
+        slack = time;
+    }
+
+    public void setLastSorted() {
+        lastSorted = true;
+    }
+
+    public boolean isLastSorted() {
+        return lastSorted;
+    }
+
+    public void setAdded() {
+        addedToList = true;
+    }
+
+    public boolean isAdded() {
+        return addedToList;
     }
 
     public void reduceInCounter() {
@@ -83,8 +115,16 @@ class Task {
         earliestStart = time;
     }
 
+    public void setLatestStart(int time) {
+        latestStart = time;
+    }
+
     public void setEarliestFinish(int time) {
         earliestFinish = time;
+    }
+
+    public void setLatestFinish(int time) {
+        latestFinish = time;
     }
 
     public void setPrintedFinish() {
@@ -101,6 +141,14 @@ class Task {
 
     public boolean isPrintedStart() {
         return printedStart;
+    }
+
+    public void setCritical() {
+        critical = true;
+    }
+
+    public boolean isCritical() {
+        return critical;
     }
 
     public void setDFSActive() {
