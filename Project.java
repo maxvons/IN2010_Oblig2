@@ -117,30 +117,6 @@ class Project {
         blackSet = new LinkedList<>();
     }
 
-    public int getActiveTasks() {
-        int active = 0;
-        
-        for (Task t : tasks) {
-            if (t.isActive()) {
-                active++;
-            }
-        }
-
-        return active;
-    }
-
-    public int getVisitedTasks() {
-        int visited = 0;
-
-        for (Task t : tasks) {
-            if (t.isVisited()) {
-                visited++;
-            }
-        }
-
-        return visited;
-    }
-
     // Detect cycle in graph
     public boolean containsCycle(Task s) {
         s.setDFSActive();
@@ -248,7 +224,6 @@ class Project {
                 int temp = v.getId();
                 v.setId(i);
                 queue.add(v);
-                System.out.println("Added task with original ID: " + temp);
                 i++;
 
                 for (Task d : v.getOutEdges()) {
@@ -314,37 +289,7 @@ class Project {
         }
     }
 
-    // Get the earliestStart value of the task with the highest value
-    public int getLastStart() {
-        int lastStart = 0;
-        int temp = 0;
-
-        for (Task t : tasks) {
-            temp = t.getEarliestStart();
-            if (temp > lastStart) {
-                lastStart = temp;
-            }
-        }
-
-        return lastStart;
-    }
-
-    // Get the earliestFinish value of the task with the highest value
-    public int getLastFinish() {
-        int lastFinish = 0;
-        int temp = 0;
-
-        for (Task t : tasks) {
-            temp = t.getEarliestFinish();
-            if (temp > lastFinish) {
-                lastFinish = temp;
-            }
-        }
-
-        return lastFinish;
-    }
-
-    // Get the fastest task in a given list {
+    // Get the fastest task in a given list 
     public Task getFastestSameStart(LinkedList<Task> taskList) {
         int temp = 0;
         Task fastest = null;
@@ -363,6 +308,27 @@ class Project {
         }
         
         return fastest;
+    }
+
+    // Get the slowest task in a given list
+    public Task getSlowestSameStart(LinkedList<Task> taskList) {
+        int temp = 0;
+        Task slowest = null;
+
+        if (taskList.size() == 1) {
+            return taskList.get(0);
+        }
+
+        int time = taskList.get(0).getTime();
+        for (Task t : taskList) {
+            temp = t.getTime();
+            if (temp >= time) {
+                time = temp;
+                slowest = t;
+            }
+        }
+
+        return slowest;
     }
 
     /* Helper method for figuring out if a list contains tasks with different 
@@ -385,7 +351,7 @@ class Project {
     }
 
     // Prints the shortest possible project execution time
-    public void printTimeSchedule(Queue<Task> sortedProject, int lastStart) {
+    public void printTimeSchedule(Queue<Task> sortedProject) {
         int time = 0;
         int start = 0;
         int currentStaff = 0;
@@ -488,7 +454,180 @@ class Project {
                 System.out.println("              Current staff: " + currentStaff);
                 System.out.println();
             }
-        System.out.println("**** Shortest possible project execution is " + (tasks.getLast().getEarliestFinish() + tasks.getLast().getTime()) + " ****");
+        System.out.println("**** Shortest possible project execution is " + (tasks.getLast().getEarliestFinish() + " ****"));
+    }
+
+    // Mark tasks in the critical path as critical
+    public void markCritical(Queue<Task> longestPath) {
+        for (Task t : longestPath) {
+            t.setCritical();
+        }
+    }
+
+    // Get the longest path in a graph (critical path)
+    public Queue<Task> getLongestPath(Queue<Task> sortedProject) {
+        LinkedList<Task> timeTasks = null;
+        Queue<Task> longestPath = new LinkedList<>();
+        LinkedList<Task> tasks = new LinkedList<>();
+        Task task = null;
+        Task slowest = null;
+        int start = 0;
+        boolean done = false;
+        
+        for (Task t : sortedProject) {
+            tasks.add(t);
+        }
+
+        while (!done) {
+            if (sortedProject.peek() != null) {
+                task = sortedProject.remove();
+            }
+            
+            if (tasks.getLast() == task) {
+                done = true;
+            }
+
+            timeTasks = new LinkedList<>();
+            start = task.getEarliestStart();
+
+            timeTasks.add(task);
+            
+            // Add tasks with the same start time to a list
+            for (Task t : sortedProject) {
+                if (t.getEarliestStart() == start && !timeTasks.contains(t)) {
+                    timeTasks.add(t);
+                }
+            }
+            
+            slowest = getSlowestSameStart(timeTasks);
+
+            if (!longestPath.contains(slowest) && !slowest.isAdded()) {
+                longestPath.add(slowest);
+            }
+
+            for (Task t : timeTasks) {
+                t.setAdded();
+            }
+        }
+
+        markCritical(longestPath);
+
+        return longestPath;
+    }   
+
+    // Get the task with the smallest latestStart value in a given list
+    public Task getFastestLatestStart(LinkedList<Task> taskList) {
+        int temp = 0;
+        Task fastest = null;
+
+        if (taskList.size() == 1) {
+            return taskList.get(0);
+        }
+
+        int time = taskList.get(0).getTime();
+        for (Task t : taskList) {
+            temp = t.getTime();
+            if (temp <= time) {
+                time = temp;
+                fastest = t;
+            }
+        }
+        
+        return fastest;
+    }
+
+    // Add latestStart to tasks in sorted project
+    public void addLatestStart(Queue<Task> sortedProject) {
+        LinkedList<Task> sortedTasks = new LinkedList<>();
+        LinkedList<Task> outEdges = new LinkedList<>();
+        Queue<Task> criticalPath = new LinkedList<>();
+        int latestFinish = 0;
+        Task task = null;
+        
+        // Add to different list for easier operation access
+        for (Task t : sortedProject) {
+            sortedTasks.add(t);
+        }
+
+        // Last task in sorted list
+        Task last = sortedTasks.getLast();
+
+        // Get the critical path
+        criticalPath = getLongestPath(sortedProject);
+
+        // Set a boolean for last task in sorted project
+        sortedTasks.getLast().setLastSorted();
+
+        while (!sortedTasks.isEmpty()) {
+            task = sortedTasks.getLast();
+            
+            if (task.isLastSorted()) {  // If last task in sorted project
+                task.setLatestFinish(task.getEarliestFinish());
+                task.setLatestStart(task.getEarliestStart());
+            }   else {
+                outEdges = task.getOutEdges();
+                if (outEdges.size() == 0 && !task.isLastSorted()) {
+                    latestFinish = last.getEarliestFinish();
+                    task.setLatestFinish(latestFinish);
+                    task.setLatestStart(latestFinish - task.getTime());
+                }   else if (outEdges.size() == 1) {
+                    if (criticalPath.contains(task)) {
+                        task.setLatestFinish(task.getEarliestFinish());
+                        task.setLatestStart(task.getEarliestStart());
+                    }   else {
+                        latestFinish = outEdges.getFirst().getLatestStart();
+                        task.setLatestFinish(latestFinish);
+                        task.setLatestStart(latestFinish - task.getTime());
+                    }
+                }   else if (outEdges.size() > 1) {
+                    if (criticalPath.contains(task)) {
+                        task.setLatestFinish(task.getEarliestFinish());
+                        task.setLatestStart(task.getEarliestStart());
+                    }   else {
+                        latestFinish = getFastestLatestStart(outEdges).getLatestStart();
+                        task.setLatestFinish(latestFinish);
+                        task.setLatestStart(latestFinish - task.getTime());
+                    }
+
+                }
+            }
+            sortedTasks.remove(task);
+        }
+    }
+
+    // Calculate slack for all the tasks in the project
+    public void calculateSlack(Queue<Task> sortedProject) {
+        for (Task t : sortedProject) {
+            if (t.isCritical()) {
+                t.setSlack(0);
+            }   else {
+                t.setSlack(t.getLatestStart() - t.getEarliestStart());
+            }
+        }
+    }
+
+    public void printProjectInfo(Queue<Task> sortedProject) {
+        for (Task t : sortedProject) {
+            if (t.isCritical()) {
+                System.out.println("Task ID: " + t.getId() + " (critical)");
+            }   else {
+                System.out.println("Task ID: " + t.getId());
+            }
+            System.out.println("Task name: " + t.getName());
+            System.out.println("Task time: " + t.getTime());
+            System.out.println("Task staff required: " + t.getStaff());
+            System.out.println("Earliest starting time: " + t.getEarliestStart());
+            System.out.println("Slack: " + t.getSlack());
+            if (t.getOutEdges().size() > 0) {
+                System.out.println("Tasks that depend on this task:");
+                for (Task o : t.getOutEdges()) {
+                    System.out.println("ID: " + o.getId());
+                }   
+            }   else {
+                System.out.println("No tasks depend on this task.");
+            }
+            System.out.println("\n\n");
+        }
     }
 
 
