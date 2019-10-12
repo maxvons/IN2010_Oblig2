@@ -2,25 +2,26 @@ import java.util.LinkedList;
 
 class Task {
     private int id;
+    private int sortedId;
     private int time;
     private int staff;
-    private String name;
     private int earliestStart;
     private int earliestFinish;
     private int latestStart;
     private int latestFinish;
     private int slack;
+    private int inCounter;
+    private String name;
     private boolean printedFinish = false;
     private boolean printedStart = false;
     private boolean critical = false;
     private boolean addedToList = false;
     private boolean lastSorted = false;
-    private LinkedList<Task> outEdges = new LinkedList<>();
-    private LinkedList<Task> inEdges = new LinkedList<>();
-    private int inCounter;
-    private LinkedList<Integer> dependencyEdges = new LinkedList<>();
     private boolean DFSActive = false;
     private boolean visited = false;
+    private LinkedList<Task> outEdges = new LinkedList<>();
+    private LinkedList<Task> inEdges = new LinkedList<>();
+    private LinkedList<Integer> dependencyEdges = new LinkedList<>();
 
     public Task(int id, int time, int staff, String name, int inCounter, LinkedList<Integer>depencyEdges) {
         this.id = id;
@@ -77,6 +78,14 @@ class Task {
 
     public LinkedList<Integer> getDependencyEdges() {
         return dependencyEdges;
+    }
+
+    public int getSortedId() {
+        return sortedId;
+    }
+
+    public void setSortedId(int id) {
+        sortedId = id;
     }
 
     public int getSlack() {
