@@ -41,7 +41,7 @@ class Project {
         int numTasks = scan.nextInt();
 
         // Creating tasks and adding to list without adding dependencies
-        while (scan.hasNextLine()) {
+        while (taskId != numTasks) {
             taskId = scan.nextInt();
             taskName = scan.next();
             taskTime = scan.nextInt();
@@ -211,8 +211,7 @@ class Project {
 
         if (isRealizable()) {
             for (Task t : tasks) {
-                inCounter = t.getDependencyEdges().size();
-                if (inCounter == 0) {
+                if (t.getInCounter() == 0) {
                     stack.push(t);
                 }
             }
@@ -221,8 +220,7 @@ class Project {
 
             while (!(stack.isEmpty())) {
                 Task v = stack.pop();
-                int temp = v.getId();
-                v.setId(i);
+                v.setSortedId(i);
                 queue.add(v);
                 i++;
 
@@ -243,8 +241,8 @@ class Project {
         }
     }
 
-    // Add the earliest start time to all tasks in a sorted project
-    public void addEarliestStart(Queue<Task> sortedProject) {
+    // Add the earliest start and finishing time to all tasks in a sorted project
+    public void addEarliestStartFinish(Queue<Task> sortedProject) {
         int time = 0;
         int temp = 0;
         Task slowest = null;
@@ -252,39 +250,18 @@ class Project {
         for (Task t : sortedProject) {
             if (t.getInCounter() == 0) {
                 t.setEarliestStart(0);
+                t.setEarliestFinish(t.getEarliestStart() + t.getTime());
             }   else {
                 time = 0;
                 for (Task p : t.getInEdges()) {
-                    temp = p.getTime();
+                    temp = p.getEarliestFinish();
                     if (temp > time) {
                         time = temp; 
                         slowest = p;
                     }
                 }
-                t.setEarliestStart(time + slowest.getEarliestStart());
-            }
-        }
-    }
-
-    // Add the earliest finishing time for each task in sorted project
-    public void addEarliestFinish(Queue<Task> sortedProject) {
-        int time = 0;
-        int temp = 0;
-        Task slowest = null;
-
-        for (Task t : sortedProject) {
-            if (t.getInCounter() == 0) {
-                t.setEarliestFinish(t.getTime());
-            }   else {
-                time = 0;
-                for (Task p : t.getInEdges()) {
-                    temp = p.getTime();
-                    if (temp > time) {
-                        time = temp; 
-                        slowest = p;
-                    }
-                }
-                t.setEarliestFinish(time + slowest.getEarliestStart() + t.getTime());
+                t.setEarliestStart(slowest.getTime() + slowest.getEarliestStart());
+                t.setEarliestFinish(slowest.getEarliestFinish() + t.getTime());
             }
         }
     }
@@ -348,6 +325,80 @@ class Project {
         }
 
         return different; 
+    }
+
+    // Get the finish time of the last task in the project
+    public int getLastFinish(Queue<Task> sortedProject) {
+        int finishTime = 0;
+        int temp = 0;
+
+        for (Task t : sortedProject) {
+            temp = t.getEarliestFinish();
+            if (temp > finishTime) {
+                finishTime = temp;
+            }
+        }
+
+        return finishTime;
+    }
+
+    public void printTimeScheduleFixed(Queue<Task> sortedProject) {
+        int time = 0;
+        int currentStaff = 0;
+        boolean timePrint = false;
+        boolean taskStarted = false;
+        boolean taskFinished = false;
+        LinkedList<Task> startedTasks = new LinkedList<>();
+        
+        // Add tasks to different list for easier operation access
+        LinkedList<Task> tasks = new LinkedList<>();
+        for (Task t : sortedProject) {
+            tasks.add(t);
+        }
+
+        int finishTime = getLastFinish(sortedProject);
+
+        // Loop while not at last task in sorted project
+        while (time <= finishTime) {
+            taskStarted = false;
+            taskFinished = false;
+            timePrint = false;
+            
+            for (Task t : tasks) {
+                if (time == t.getEarliestStart()) {
+                    startedTasks.add(t);
+                    taskStarted = true;
+                    if (!timePrint) {
+                        System.out.println("Time: " + time);
+                        timePrint = true;
+                    }
+                    System.out.printf("%20s %n", "Starting: " + t.getId());
+                }
+                if (time == t.getEarliestFinish()) {
+                    startedTasks.remove(t);
+                    taskFinished = true;
+                    if (!timePrint) {
+                        System.out.println("Time: " + time);
+                        timePrint = true;
+                    }
+                    System.out.printf("%20s %n", "Finished: " + t.getId());
+                }
+            }
+
+            currentStaff = 0;
+
+            if (taskStarted || taskFinished) {
+                for (Task t : startedTasks) {
+                    currentStaff += t.getStaff();
+                }
+                System.out.printf("%25s %n", "Current staff: " + currentStaff);
+                System.out.println();
+            }
+
+            time++;
+        }
+
+        System.out.println("*** Shortest possible project execution is " + finishTime + " ***");
     }
 
     // Prints the shortest possible project execution time
@@ -639,8 +690,8 @@ class Project {
     }
 
     // Print method for testing purposes
-    public void printSortedTasks(Queue<Task> taskQueue) {
-        for (Task t : taskQueue) {
+    public void printSortedTasks(Queue<Task> sortedProject) {
+        for (Task t : sortedProject) {
             System.out.println(t);
         }
     }
@@ -667,8 +718,7 @@ class Project {
     // Method for adding dependency edge for testing purposes
     public void addDependencyEdge(int id1, int id2) {
         Task t1 = getTaskById(id1);
-        Task t2 = getTaskById(id2);
-
+        
         t1.getDependencyEdges().add(id2);
     }
 
